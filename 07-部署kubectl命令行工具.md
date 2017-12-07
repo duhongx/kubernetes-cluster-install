@@ -146,8 +146,7 @@ metadata:
   annotations:
     control-plane.alpha.kubernetes.io/leader: '{"holderIdentity":"k8s-master2","leaseDurationSeconds":15,"acquireTime":"2017-12-06T02:29:37Z","renewTime":"2017-12-07T01:26:02Z","leaderTransitions":0}'
   creationTimestamp: 2017-12-06T02:29:37Z
-  name: kube-scheduler
-  namespace: kube-system
+  name: kube-scheduler  namespace: kube-system
   resourceVersion: "160841"
   selfLink: /api/v1/namespaces/kube-system/endpoints/kube-scheduler
   uid: 4e2d414a-da2d-11e7-a4f0-54520009ec1e
