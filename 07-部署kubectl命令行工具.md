@@ -117,9 +117,9 @@ etcd-2               Healthy   {"health": "true"}
 etcd-0               Healthy   {"health": "true"}
 ```
 
-+ 因为kube-apiserver是无状态的服务，kube-controller-manager和kube—scheduler为有状态服务，同一时间只有一台当选，会在三台master机之间进行选举，由其中一台担任leader的角色。
++ 因为kube-apiserver是无状态的服务，kube-controller-manager和kube-scheduler为有状态服务，同一时间只有一台当选，会在三台master机之间进行选举，由其中一台担任leader的角色。
 
-## 查看kube-controller-manager和kube—scheduler组件的选举情况
+## 查看kube-controller-manager和kube-scheduler组件的选举情况
 
 ``` bash
 $ kubectl get endpoints -n kube-system  kube-controller-manager -o yaml
@@ -154,8 +154,8 @@ subsets: []
 ```
 + 从输出结果可以看出kube-scheduler的leader在k8s-master2上。
 
-## 测试kube-apiserver断开kube-controller-manager和kube—scheduler组件的重新选举和切换情况
-从上面的输出可以看出kube-controller-manager和kube—scheduler的leader都在k8s-master2上，现在去k8s-master2上停止kube-apiserver服务。
+## 测试kube-apiserver断开kube-controller-manager和kube-scheduler组件的重新选举和切换情况
+从上面的输出可以看出kube-controller-manager和kube-scheduler的leader都在k8s-master2上，现在去k8s-master2上停止kube-apiserver服务。
 
 ``` bash
 $ systemctl stop kube-apiserver
@@ -213,5 +213,5 @@ metadata:
 subsets: []
 ```
 
-停掉k8s-master2上的kube-apiserver服务后，立即查看kube-controller-manager和kube—scheduler的leader还是在k8s-master2上，稍等5-10秒左右再次查看就发现
-kube-controller-manager和kube—scheduler的leader都切换到k8s-master1上。
+停掉k8s-master2上的kube-apiserver服务后，立即查看kube-controller-manager和kube-scheduler的leader还是在k8s-master2上，稍等5-10秒左右再次查看就发现
+kube-controller-manager和kube-scheduler的leader都切换到k8s-master1上。
