@@ -339,6 +339,7 @@ zookeeper-3308723936-dgnj7   1/1       Running   0          1m
 ## 拉取kubernetes插件需要的镜像
 
 + kubernetes的插件image都在官方docker仓库，安装插件的时候拉取image太痛苦了，提前手动将image pull到本地，然后打个tag，push到harbor中。
++ 在harbor仓库新建一个公开的k8s项目，然后将kubernetes查看对应的image全部push过去。harbor上的公开项目可以直接pull不需要docker-register。
 
 ``` bash
 docker pull xuejipeng/k8s-dns-kube-dns-amd64:v1.14.1
