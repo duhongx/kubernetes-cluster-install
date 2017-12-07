@@ -1,6 +1,6 @@
 # 部署 harbor 私有仓库
 
-本文档介绍使用 docker-compose 部署 harbor 私有仓库的步骤，你也可以使用 docker 官方的 registry 镜像部署私有仓库([部署 Docker Registry](12-部署Docker-Registry.md))。
+本文档介绍使用 docker-compose 部署 harbor 私有仓库的步骤。
 
 ## 安装和配置 docker
 
@@ -174,7 +174,7 @@ $ diff harbor.cfg.orig harbor.cfg
 5c5
 < hostname = reg.mydomain.com
 ---
-> hostname = 10.64.3.7
+> hostname = 192.168.5.103
 9c9
 < ui_url_protocol = http
 ---
@@ -291,7 +291,7 @@ registry             /entrypoint.sh serve /etc/ ...   Up      5000/tcp
 
 ## 访问管理界面
 
-浏览器访问 `https://192.168.5.103`，示例的是 `https://10.64.3.7`
+浏览器访问 `https://192.168.5.103`，示例的是 `https://192.168.5.103`
 
 用账号 `admin` 和 harbor.cfg 配置文件中的默认密码 `Harbor12345` 登陆系统：
 
@@ -310,18 +310,18 @@ ca_download  config  database  job_logs registry  secretkey
 
 ## docker 客户端登陆
 
-将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/10.64.3.7` 目录下
+将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/192.168.5.103` 目录下
 
 ``` bash
-$ sudo mkdir -p /etc/docker/certs.d/10.64.3.7
-$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/10.64.3.7/ca.crt
+$ sudo mkdir -p /etc/docker/certs.d/192.168.5.103
+$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/192.168.5.103/ca.crt
 $
 ```
 
 登陆 harbor
 
 ``` bash
-$ docker login 10.64.3.7
+$ docker login 192.168.5.103
 Username: admin
 Password:
 ```
