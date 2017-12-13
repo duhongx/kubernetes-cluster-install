@@ -26,4 +26,5 @@
 1. [部署 KubeDNS 插件](11-部署KubeDNS插件.md)
 1. [部署 Heapster 插件](12-部署Heapster插件.md)
 1. [部署 Dashboard 插件](13-部署Dashboard插件.md)
+1. [部署 Prometheus 插件](13-部署Prometheus插件.md)
 
