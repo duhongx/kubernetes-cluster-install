@@ -1,5 +1,8 @@
 # 测试Deployment的rolling-update
 
+
+## 通过yaml文件来执行Deployment的rolling-update
+
 kubernetes Deployment是一个更高级别的抽象，就像文章开头那幅示意图那样，Deployment会创建一个Replica Set，用来保证Deployment中Pod的副本数。由于kubectl rolling-update仅支持replication controllers，因此要想rolling-updata deployment中的Pod，你需要修改Deployment自己的manifest文件并应用。这个修改会创建一个新的Replica Set，在scale up这个Replica Set的Pod数的同时，减少原先的Replica Set的Pod数，直至zero。而这一切都发生在Server端，并不需要kubectl参与。
 我们同样来看一个例子。
 我们建立第一个版本的deployment manifest文件：nginx-v0.1.yaml。
@@ -286,3 +289,111 @@ REVISION	CHANGE-CAUSE
 3		<none>
 ```
 可以看到history中最多保存了两个revision记录（这个Revision保存的数量应该可以设置）。
+
+## 通过set image来执行Deployment的rolling-update
+上面的方法是通过yaml文件的方式来执行rolling-update，还有一种直接通过set image的方式来rolling-update
+```bash
+[root@docker-deploy duhong-test]# kubectl get pods
+NAME                         READY     STATUS    RESTARTS   AGE
+nginx-896838084-3cvxl        1/1       Running   0          3m
+nginx-896838084-pwz7n        1/1       Running   0          3m
+nginx-896838084-qj2g8        1/1       Running   0          3m
+nginx-896838084-vgvlh        1/1       Running   0          3m
+zookeeper-1176509725-dvjz2   1/1       Running   8          23d
+[root@docker-deploy duhong-test]# kubectl exec nginx-896838084-3cvxl  env
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOSTNAME=nginx-896838084-3cvxl
+DEPLOYMENT_DEMO_VER=v0.1
+NGINX_SERVICE_HOST=10.254.156.74
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_ADDR=10.254.0.1
+ZOOKEEPER_SERVICE_HOST=10.254.10.69
+ZOOKEEPER_PORT_2181_TCP_PROTO=tcp
+NGINX_PORT=tcp://10.254.156.74:80
+NGINX_PORT_80_TCP_PORT=80
+KUBERNETES_PORT_443_TCP=tcp://10.254.0.1:443
+ZOOKEEPER_PORT_2181_TCP=tcp://10.254.10.69:2181
+ZOOKEEPER_PORT_2181_TCP_ADDR=10.254.10.69
+NGINX_PORT_80_TCP=tcp://10.254.156.74:80
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_PORT=tcp://10.254.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+ZOOKEEPER_SERVICE_PORT=2181
+ZOOKEEPER_PORT=tcp://10.254.10.69:2181
+NGINX_SERVICE_PORT=80
+NGINX_PORT_80_TCP_PROTO=tcp
+NGINX_PORT_80_TCP_ADDR=10.254.156.74
+KUBERNETES_SERVICE_HOST=10.254.0.1
+ZOOKEEPER_PORT_2181_TCP_PORT=2181
+NGINX_VERSION=1.10.1-1~jessie
+HOME=/root
+```
+可以看出当前nginx pod的nginx版本为1.10.1，通过如下命令来将nginx pod中nginx的版本更新为1.11.9
+```bash
+[root@docker-deploy duhong-test]# kubectl set image deploy nginx nginx=172.16.100.86/efk/nginx:1.11.9 --record
+deployment "nginx" image updated
+[root@docker-deploy duhong-test]# kubectl get pods
+NAME                         READY     STATUS        RESTARTS   AGE
+nginx-2033560013-030r6       1/1       Running       0          5s
+nginx-2033560013-1j5kv       1/1       Running       0          5s
+nginx-2033560013-913cz       1/1       Running       0          5s
+nginx-2033560013-n37pd       1/1       Running       0          5s
+nginx-896838084-3cvxl        0/1       Terminating   0          7m
+nginx-896838084-pwz7n        1/1       Running       0          7m
+nginx-896838084-qj2g8        0/1       Terminating   0          7m
+nginx-896838084-vgvlh        1/1       Running       0          7m
+zookeeper-1176509725-dvjz2   1/1       Running       8          23d
+[root@docker-deploy duhong-test]# kubectl get rs
+NAME                   DESIRED   CURRENT   READY     AGE
+nginx-2033560013       4         4         4         8s
+nginx-2286594511       0         0         0         13m
+nginx-896838084        0         0         0         21m
+zookeeper-1176509725   1         1         1         23d
+```
+更新过程和通过yaml完全一致。
+
+```bash
+[root@docker-deploy duhong-test]# kubectl get pods
+NAME                         READY     STATUS    RESTARTS   AGE
+nginx-2033560013-030r6       1/1       Running   0          2m
+nginx-2033560013-1j5kv       1/1       Running   0          2m
+nginx-2033560013-913cz       1/1       Running   0          2m
+nginx-2033560013-n37pd       1/1       Running   0          2m
+zookeeper-1176509725-dvjz2   1/1       Running   8          23d
+[root@docker-deploy duhong-test]# kubectl exec nginx-2033560013-030r6 env
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOSTNAME=nginx-2033560013-030r6
+DEPLOYMENT_DEMO_VER=v0.1
+NGINX_PORT=tcp://10.254.156.74:80
+NGINX_PORT_80_TCP_ADDR=10.254.156.74
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+ZOOKEEPER_SERVICE_HOST=10.254.10.69
+ZOOKEEPER_PORT=tcp://10.254.10.69:2181
+ZOOKEEPER_PORT_2181_TCP_ADDR=10.254.10.69
+NGINX_SERVICE_HOST=10.254.156.74
+KUBERNETES_PORT=tcp://10.254.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.254.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+NGINX_SERVICE_PORT=80
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_ADDR=10.254.0.1
+NGINX_PORT_80_TCP_PORT=80
+KUBERNETES_SERVICE_HOST=10.254.0.1
+ZOOKEEPER_SERVICE_PORT=2181
+ZOOKEEPER_PORT_2181_TCP_PROTO=tcp
+ZOOKEEPER_PORT_2181_TCP_PORT=2181
+NGINX_PORT_80_TCP_PROTO=tcp
+ZOOKEEPER_PORT_2181_TCP=tcp://10.254.10.69:2181
+NGINX_PORT_80_TCP=tcp://10.254.156.74:80
+NGINX_VERSION=1.11.9-1~jessie
+HOME=/root
+[root@docker-deploy duhong-test]# kubectl rollout history deployment nginx
+deployments "nginx"
+REVISION	CHANGE-CAUSE
+2		kubectl apply --filename=nginx-v0.2.yaml --record=true
+3		<none>
+4		kubectl set image deploy nginx nginx=172.16.100.86/efk/nginx:1.11.9 --record=true
+```
+可以看出nginx的镜像已经成功更新为1.11.9，并且rollout history也有记录。
