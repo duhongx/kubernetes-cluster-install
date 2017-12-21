@@ -199,7 +199,70 @@ chown ceph:ceph /ceph
 ```bash
 [root@k8s-node1 /opt/ceph-cluster]# ceph-deploy osd prepare k8s-node2:/ceph k8s-node3:/ceph k8s-node4:/ceph k8s-node5:/ceph
 [ceph_deploy.conf][DEBUG ] found configuration file at: /root/.cephdeploy.conf
-[ceph_deploy.cli][INFO  ] Invoked (1.5.39): /usr/bin/ceph-deploy osd prepare k8s-node2:/ceph k8s-node3:/ceph k8s-node4:/ceph k8s-node5:/ceph
+但是测试过程中, 在使用rbd 映射块设备时, 出现一个错误, 如下 : 
+
+[root@localhost ~]# rbd map img1 --pool pool1 -m 172.17.0.2 -k /etc/ceph/ceph.client.admin.keyring 
+modinfo: ERROR: Module rbd not found.
+modprobe: FATAL: Module rbd not found.
+rbd: failed to load rbd kernel module (1)
+rbd: sysfs write failed
+rbd: map failed: (2) No such file or directory
+
+这个错误的原因是没有rbd模块.
+我这里用的是CentOS 7 x64, 解决办法有2个.
+1. 自行编译内核, 将rbd模块加入内核.
+参考 : 
+https://github.com/ceph/ceph-kmod-rpm
+2. 使用elrepo提供的, 已经编译好的内核.
+参考 : 
+http://elrepo.org/
+这里使用第二种方法来解决这个问题, 即安装已经编译好的内核 : 
+
+[root@localhost ~]# rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+[root@localhost ~]# rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+[root@localhost ~]# yum install -y yum-plugin-fastestmirror
+[root@localhost ~]# yum --enablerepo=elrepo-kernel install kernel-ml kernel-ml-devel
+
+可以看到新的内核支持rbd模块
+
+[root@localhost ceph-kmod-rpm]# locate rbd.ko
+/usr/lib/modules/3.18.1-1.el7.elrepo.x86_64/kernel/drivers/block/rbd.ko
+
+修改为以新内核启动
+
+[root@localhost ~]#  cat /boot/grub2/grub.cfg |grep menuentry
+if [ x"${feature_menuentry_id}" = xy ]; then
+  menuentry_id_option="--id"
+  menuentry_id_option=""
+export menuentry_id_option
+menuentry 'CentOS Linux (3.18.1-1.el7.elrepo.x86_64) 7 (Core)' --class centos --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.10.0-123.el7.x86_64-advanced-5b6291c5-d316-467f-9a78-f4535ad76e6f' {
+menuentry 'CentOS Linux, with Linux 3.10.0-123.el7.x86_64' --class centos --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.10.0-123.el7.x86_64-advanced-5b6291c5-d316-467f-9a78-f4535ad76e6f' {
+menuentry 'CentOS Linux, with Linux 0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed' --class centos --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed-advanced-5b6291c5-d316-467f-9a78-f4535ad76e6f' {
+
+[root@localhost ~]# grub2-set-default 'CentOS Linux (3.18.1-1.el7.elrepo.x86_64) 7 (Core)'
+
+[root@localhost ~]# grub2-editenv list
+saved_entry=CentOS Linux (3.18.1-1.el7.elrepo.x86_64) 7 (Core)
+
+[root@localhost ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-3.18.1-1.el7.elrepo.x86_64
+Found initrd image: /boot/initramfs-3.18.1-1.el7.elrepo.x86_64.img
+Found linux image: /boot/vmlinuz-3.10.0-123.el7.x86_64
+Found initrd image: /boot/initramfs-3.10.0-123.el7.x86_64.img
+Found linux image: /boot/vmlinuz-0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed
+Found initrd image: /boot/initramfs-0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed.img
+done
+
+重启系统, 确认已经可以使用rbd模块.
+
+[root@localhost ~]# uname -r
+3.18.1-1.el7.elrepo.x86_64
+[root@localhost ~]# lsmod|grep rbd
+[root@localhost ~]# modprobe rbd
+[root@localhost ~]# lsmod|grep rbd
+rbd                    73304  0 
+libceph               235718  1 rbd[ceph_deploy.cli][INFO  ] Invoked (1.5.39): /usr/bin/ceph-deploy osd prepare k8s-node2:/ceph k8s-node3:/ceph k8s-node4:/ceph k8s-node5:/ceph
 [ceph_deploy.cli][INFO  ] ceph-deploy options:
 -----------------------------------------------------
 [k8s-node5][INFO  ] checking OSD status...
@@ -256,6 +319,77 @@ ID WEIGHT  TYPE NAME          UP/DOWN REWEIGHT PRIMARY-AFFINITY
  3 0.01909         osd.3           up  1.00000          1.00000 
  ```
 
+
+但是测试过程中, 在使用rbd 映射块设备时, 出现一个错误, 如下 : 
+[root@k8s-node1 /usr/local/bin]# rbd map zk-log-1
+modinfo: ERROR: Module rbd not found.
+modprobe: FATAL: Module rbd not found.
+rbd: failed to load rbd kernel module (1)
+rbd: sysfs write failed
+In some cases useful info is found in syslog - try "dmesg | tail" or so.
+rbd: map failed: (2) No such file or directory
+[root@localhost ~]# rbd map img1 --pool pool1 -m 172.17.0.2 -k /etc/ceph/ceph.client.admin.keyring 
+modinfo: ERROR: Module rbd not found.
+modprobe: FATAL: Module rbd not found.
+rbd: failed to load rbd kernel module (1)
+rbd: sysfs write failed
+rbd: map failed: (2) No such file or directory
+
+这个错误的原因是没有rbd模块.
+我这里用的是CentOS 7 x64, 解决办法有2个.
+1. 自行编译内核, 将rbd模块加入内核.
+参考 : 
+https://github.com/ceph/ceph-kmod-rpm
+2. 使用elrepo提供的, 已经编译好的内核.
+参考 : 
+http://elrepo.org/
+这里使用第二种方法来解决这个问题, 即安装已经编译好的内核 : 
+
+[root@localhost ~]# rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+[root@localhost ~]# rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+[root@localhost ~]# yum install -y yum-plugin-fastestmirror
+[root@localhost ~]# yum --enablerepo=elrepo-kernel install kernel-ml kernel-ml-devel
+
+可以看到新的内核支持rbd模块
+
+[root@localhost ceph-kmod-rpm]# locate rbd.ko
+/usr/lib/modules/3.18.1-1.el7.elrepo.x86_64/kernel/drivers/block/rbd.ko
+
+修改为以新内核启动
+
+[root@localhost ~]#  cat /boot/grub2/grub.cfg |grep menuentry
+if [ x"${feature_menuentry_id}" = xy ]; then
+  menuentry_id_option="--id"
+  menuentry_id_option=""
+export menuentry_id_option
+menuentry 'CentOS Linux (3.18.1-1.el7.elrepo.x86_64) 7 (Core)' --class centos --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.10.0-123.el7.x86_64-advanced-5b6291c5-d316-467f-9a78-f4535ad76e6f' {
+menuentry 'CentOS Linux, with Linux 3.10.0-123.el7.x86_64' --class centos --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.10.0-123.el7.x86_64-advanced-5b6291c5-d316-467f-9a78-f4535ad76e6f' {
+menuentry 'CentOS Linux, with Linux 0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed' --class centos --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed-advanced-5b6291c5-d316-467f-9a78-f4535ad76e6f' {
+
+[root@localhost ~]# grub2-set-default 'CentOS Linux (3.18.1-1.el7.elrepo.x86_64) 7 (Core)'
+
+[root@localhost ~]# grub2-editenv list
+saved_entry=CentOS Linux (3.18.1-1.el7.elrepo.x86_64) 7 (Core)
+
+[root@localhost ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-3.18.1-1.el7.elrepo.x86_64
+Found initrd image: /boot/initramfs-3.18.1-1.el7.elrepo.x86_64.img
+Found linux image: /boot/vmlinuz-3.10.0-123.el7.x86_64
+Found initrd image: /boot/initramfs-3.10.0-123.el7.x86_64.img
+Found linux image: /boot/vmlinuz-0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed
+Found initrd image: /boot/initramfs-0-rescue-0e18ebb9ae3d4dbfb4b95bbd4cf359ed.img
+done
+
+重启系统, 确认已经可以使用rbd模块.
+
+[root@localhost ~]# uname -r
+3.18.1-1.el7.elrepo.x86_64
+[root@localhost ~]# lsmod|grep rbd
+[root@localhost ~]# modprobe rbd
+[root@localhost ~]# lsmod|grep rbd
+rbd                    73304  0 
+libceph               235718  1 rbd
 
 
 
