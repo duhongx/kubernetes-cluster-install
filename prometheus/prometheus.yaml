@@ -14,14 +14,14 @@ spec:
     spec:
       serviceAccountName: prometheus
       containers:
-      - image: prom/prometheus:v1.8.2
+      - image: prom/prometheus:v2.0.0
         name: prometheus
         command:
         - "/bin/prometheus"
         args:
-        - "-config.file=/etc/prometheus/prometheus.yml"
-        - "-storage.local.path=/prometheus"
-        - "-storage.local.retention=24h"
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.path=/prometheus"
+        - "--storage.tsdb.retention=24h"
         ports:
         - containerPort: 9090
           protocol: TCP
