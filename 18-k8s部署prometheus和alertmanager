@@ -1,1 +1,23 @@
-# 测试Deployment的rolling-update
+# kubernetes部署prometheus和alertmanager
+
+## kubernetes部署peometheus
+
+kubectl create -f rbac.yaml
+kubectl create -f configmap.yaml
+kubectl create -f prometheus-rules.yaml
+kubectl create -f deployment.yaml
+kubectl create -f service.yaml
+
+
+## kubernetes部署alertmanager
+
+kubectl create -f configmap.yaml
+kubectl create -f deployment.yaml
+kubectl create -f service.yaml
+
+
+部署完成后修改prometheus-rules修改告警的rules,是prometheus产生告警发送到alertmanager
+
+然后修改alertmanager的configmap中的route和receivers,发送告警到指定的webhook
+
+修改后的文件在manifests目录下
